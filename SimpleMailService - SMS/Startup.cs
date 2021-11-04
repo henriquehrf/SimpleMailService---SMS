@@ -13,8 +13,10 @@ using Microsoft.OpenApi.Models;
 using Newtonsoft.Json;
 using SimpleMailService___SMS.Domain.CommandHandlers;
 using SimpleMailService___SMS.Domain.Commands;
+using SimpleMailService___SMS.Domain.Contracts;
 using SimpleMailService___SMS.Domain.Notification;
 using SimpleMailService___SMS.Infra.BehaviorMediatR;
+using SimpleMailService___SMS.Service;
 using System;
 using System.Linq;
 using System.Net.Mime;
@@ -51,6 +53,7 @@ namespace SimpleMailService___SMS
 			services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ValidationRequestBehavior<,>));
 			services.AddMediatR(typeof(Startup));
 			services.AddScoped<IDomainNotificationContext, DomainNotificationContext>();
+			services.AddScoped<ISendEmailService, SendEmailService>();
 			services.AddScoped<AsyncRequestHandler<SendEmailComand>, SendEmailComandHandler>();
 		}
 
