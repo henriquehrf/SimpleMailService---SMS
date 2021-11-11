@@ -1,5 +1,8 @@
 using FluentValidation.AspNetCore;
+using GreenPipes;
 using HealthChecks.UI.Client;
+using MassTransit;
+using MassTransit.Pipeline.Filters;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -13,6 +16,7 @@ using Microsoft.OpenApi.Models;
 using Newtonsoft.Json;
 using SimpleMailService___SMS.Domain.CommandHandlers;
 using SimpleMailService___SMS.Domain.Commands;
+using SimpleMailService___SMS.Domain.Consumers;
 using SimpleMailService___SMS.Domain.Contracts;
 using SimpleMailService___SMS.Domain.Notification;
 using SimpleMailService___SMS.Infra.BehaviorMediatR;
@@ -44,10 +48,10 @@ namespace SimpleMailService___SMS
 				c.SwaggerDoc("v1", new OpenApiInfo { Title = "SimpleMailService___SMS", Version = "v1" });
 			});
 
-			services.AddHealthChecks();
-				   //.AddSqlServer(Configuration.GetConnectionString("BaseIndicadores"), name: "baseSql")
-				   //.AddRedis(Configuration.GetConnectionString("CacheRedis"), name: "cacheRedis");
-			//services.AddHealthChecksUI();
+			services.AddHealthChecks()
+				.AddRabbitMQ(Configuration.GetConnectionString("QueueRabbitMQ"), name: "queueRabbitMQ");
+			services.AddHealthChecksUI()
+					.AddInMemoryStorage();
 
 
 			services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ValidationRequestBehavior<,>));
@@ -55,6 +59,32 @@ namespace SimpleMailService___SMS
 			services.AddScoped<IDomainNotificationContext, DomainNotificationContext>();
 			services.AddScoped<ISendEmailService, SendEmailService>();
 			services.AddScoped<AsyncRequestHandler<SendEmailComand>, SendEmailComandHandler>();
+			services.AddScoped<AsyncRequestHandler<QueueSendEmailComand>, QueueSendEmailComandHandler>();
+
+			Uri schedulerEndpoint = new Uri("queue:sheduleQueue");
+			services.AddMassTransit(x =>
+			{
+				x.AddConsumer<QueueSendEmailConsumer>();
+
+				x.AddBus(provider => Bus.Factory.CreateUsingRabbitMq(config =>
+				{
+					config.Host(new Uri("rabbitmq://localhost"), h =>
+					{
+						h.Username("guest");
+						h.Password("guest");
+					});
+
+
+					config.ReceiveEndpoint("sheduleQueue", ep =>
+					{
+						ep.PrefetchCount = 10;
+						ep.UseMessageRetry(r => r.Interval(3, TimeSpan.FromMinutes(1)));
+						ep.ConfigureConsumer<QueueSendEmailConsumer>(provider);
+					});
+				}));
+			});
+
+			services.AddMassTransitHostedService();
 		}
 
 		// This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

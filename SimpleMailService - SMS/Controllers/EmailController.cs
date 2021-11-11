@@ -34,5 +34,13 @@ namespace SimpleMailService___SMS.Controllers
 
 			return Ok();
 		}
+
+		[HttpPost("queue")]
+		public async Task<IActionResult> Schedule(QueueSendEmailComand comand)
+		{
+			await _bus.Send(comand);
+			return Accepted();
+		}
+
 	}
 }

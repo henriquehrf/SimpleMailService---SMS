@@ -24,7 +24,7 @@ namespace SimpleMailService___SMS.Service
 			using var smtp = new SmtpClient
 			{
 				Host = _configuration.GetValue<string>("MailBoxConfig:Host"),
-				Port = _configuration.GetValue<int>("MailBoxConfig:587"),
+				Port = _configuration.GetValue<int>("MailBoxConfig:Port"),
 				EnableSsl = _configuration.GetValue<bool>("MailBoxConfig:EnableSsl"),
 				DeliveryMethod = SmtpDeliveryMethod.Network,
 				Credentials = new NetworkCredential(_configuration.GetValue<string>("MailBoxConfig:Username"),
@@ -36,6 +36,7 @@ namespace SimpleMailService___SMS.Service
 			var sender = Email.From(emailCommand.From)
 							  .To(emailCommand.To)
 							  .Subject(emailCommand.Subject)
+							  .CC(emailCommand.CopyTo)
 							  .Body(emailCommand.Body, emailCommand.BodyIsHtml);
 
 			return await sender.SendAsync();
