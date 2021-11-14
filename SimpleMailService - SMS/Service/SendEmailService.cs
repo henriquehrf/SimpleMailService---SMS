@@ -1,9 +1,10 @@
 ﻿using FluentEmail.Core;
 using FluentEmail.Core.Models;
+using FluentEmail.Razor;
 using FluentEmail.Smtp;
 using Microsoft.Extensions.Configuration;
-using SimpleMailService___SMS.Domain.Commands;
 using SimpleMailService___SMS.Domain.Contracts;
+using SimpleMailService___SMS.Domain.Models;
 using System.Net;
 using System.Net.Mail;
 using System.Threading.Tasks;
@@ -19,7 +20,7 @@ namespace SimpleMailService___SMS.Service
 			_configuration = configuration;
 		}
 
-		public async Task<SendResponse> Send(SendEmailComand emailCommand)
+		public async Task<SendResponse> Send(EmailBase emailCommand)
 		{
 			using var smtp = new SmtpClient
 			{
@@ -28,16 +29,13 @@ namespace SimpleMailService___SMS.Service
 				EnableSsl = _configuration.GetValue<bool>("MailBoxConfig:EnableSsl"),
 				DeliveryMethod = SmtpDeliveryMethod.Network,
 				Credentials = new NetworkCredential(_configuration.GetValue<string>("MailBoxConfig:Username"),
-													_configuration.GetValue<string>("MailBoxConfig:Password"))
+													_configuration.GetValue<string>("MailBoxConfig:Password")),
 			};
 
 			Email.DefaultSender = new SmtpSender(smtp);
+			Email.DefaultRenderer = new RazorRenderer();
 
-			var sender = Email.From(emailCommand.From)
-							  .To(emailCommand.To)
-							  .Subject(emailCommand.Subject)
-							  .CC(emailCommand.CopyTo)
-							  .Body(emailCommand.Body, emailCommand.BodyIsHtml);
+			IFluentEmail sender = emailCommand.GetFluentEmailConfig();
 
 			return await sender.SendAsync();
 		}
